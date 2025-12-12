@@ -20,12 +20,7 @@ time-series analysis (TSA) and ML/AI experiments.
 
 ## Preview
 
-> Screenshots and/or a short GIF showcasing:
-> - Dashboard overview
-> - Gap report
-
-docs/screenshots/dashboard.png
-docs/screenshots/gaps.png
+![Web Interface Screenshot](docs/screenshots/screenshot_webinterface.png)
 
 ---
 
@@ -243,4 +238,4 @@ Interest areas: AI, ML systems, data enginieering, research tooling
 
 ## License
 
-[MIT License](LICENSE)
+This project is licensed under the [MIT License](LICENSE).
