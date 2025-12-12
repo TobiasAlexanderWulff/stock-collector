@@ -17,6 +17,32 @@ def _to_utc(dt: datetime | None) -> datetime | None:
     return dt.astimezone(UTC)
 
 
+def _normalize_ohlcv_frame(df: pd.DataFrame, symbol: str) -> pd.DataFrame | None:
+    if isinstance(df.columns, pd.MultiIndex):
+        # Reduce MultiIndex to a single ticker column set if possible.
+        for level in reversed(range(df.columns.nlevels)):
+            if symbol in df.columns.get_level_values(level):
+                df = df.xs(symbol, axis=1, level=level)
+                break
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df = df.copy()
+            df.columns = ["_".join(map(str, tup)) for tup in df.columns.to_list()]
+
+    df = df.rename(columns={c: str(c).strip().lower().replace(" ", "_") for c in df.columns})
+
+    required = {"open", "high", "low", "close", "volume"}
+    if not required.issubset(df.columns):
+        logger.error(
+            "unexpected yfinance columns (symbol=%s): %s",
+            symbol,
+            list(df.columns),
+        )
+        return None
+
+    return df[["open", "high", "low", "close", "volume"]]
+
+
 def fetch_candles(
     symbol: str,
     interval: str,
@@ -66,6 +92,10 @@ def fetch_candles(
     if df is None or df.empty:
         return []
 
+    df = _normalize_ohlcv_frame(df, symbol)
+    if df is None or df.empty:
+        return []
+
     # Normalize index timestamps to UTC (yfinance can return exchange-local tz).
     try:
         idx = df.index
@@ -78,21 +108,13 @@ def fetch_candles(
         return []
 
     candles: list[dict] = []
-    for ts, row in zip(idx_utc.to_pydatetime(), df.itertuples(index=False), strict=False):
-        # DataFrame may have "Open/High/Low/Close/Volume" columns.
-        row_dict = getattr(row, "_asdict", None)
-        if callable(row_dict):
-            values = row._asdict()
-        else:
-            # Fallback for older pandas / unexpected tuple structure.
-            values = dict(zip(df.columns, row, strict=False))
-
+    for ts, (_, row) in zip(idx_utc.to_pydatetime(), df.iterrows(), strict=False):
         try:
-            o = float(values["Open"])
-            h = float(values["High"])
-            l = float(values["Low"])
-            c = float(values["Close"])
-            v = float(values.get("Volume", 0.0))
+            o = float(row["open"])
+            h = float(row["high"])
+            l = float(row["low"])
+            c = float(row["close"])
+            v = float(row["volume"])
         except Exception:
             logger.exception("bad OHLCV row from yfinance (symbol=%s)", symbol)
             return []
