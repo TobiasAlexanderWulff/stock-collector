@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -9,12 +10,14 @@ from sqlalchemy.orm import Session
 from app.db import Base, engine, get_db
 import app.models  # noqa: F401
 from app.models import Symbol
+from app.services.collector import COLLECTOR
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     _ensure_symbols_columns()
     yield
+    await COLLECTOR.stop()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -83,3 +86,26 @@ def delete_symbol(symbol_id: int, db: Annotated[Session, Depends(get_db)]):
     db.delete(symbol)
     db.commit()
     return symbol
+
+
+class CollectorStatus(BaseModel):
+    is_running: bool
+    last_run: datetime | None
+    last_error: str | None
+
+
+@app.post("/api/collector/start", response_model=CollectorStatus)
+async def start_collector():
+    await COLLECTOR.start()
+    return COLLECTOR.status()
+
+
+@app.post("/api/collector/stop", response_model=CollectorStatus)
+async def stop_collector():
+    await COLLECTOR.stop()
+    return COLLECTOR.status()
+
+
+@app.get("/api/collector/status", response_model=CollectorStatus)
+def collector_status():
+    return COLLECTOR.status()
