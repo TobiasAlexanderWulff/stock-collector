@@ -54,13 +54,6 @@ Thumbs.db
 docker/.dockerignore
 
 # ======================
-# Docs / Generated
-# ======================
-docs/screenshots/*.png
-docs/screenshots/*.jpg
-docs/screenshots/*.gif
-
-# ======================
 # Misc
 # ======================
 *.bak
