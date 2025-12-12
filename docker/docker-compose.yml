@@ -1,4 +1,3 @@
-# docker/docker-compose.yml
 services:
   app:
     build:
@@ -6,11 +5,20 @@ services:
       dockerfile: docker/Dockerfile
     container_name: stock-collector
     ports:
-      - "8000:8000"
+      - "8000:8000"  # Stellt sicher, dass der Container-Port 8000 auf localhost:8000 weitergeleitet wird
     environment:
-      - DB_PATH=/data/stocks.db
+      - DB_PATH=/data/stocks.db  # Pfad zur SQLite-Datenbank im Container
       # optional: set timezone for logs (DB timestamps should still be UTC in code)
-      - TZ=Europe/Berlin
+      - TZ=Europe/Berlin  # Setzt die Zeitzone für Logs, nicht für die Datenbank
     volumes:
-      - ../data:/data
-    restart: unless-stopped
+      - ../data:/data  # Stellt sicher, dass der /data Ordner auf dem Host mit dem Container verbunden ist
+      - ./logs:/app/logs  # Optional: Hier kannst du Logs des Containers auf dem Host speichern
+    restart: unless-stopped  # Container wird automatisch neu gestartet, außer er wird manuell gestoppt
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000  # Startet den FastAPI-Server auf 0.0.0.0
+    networks:
+      - stock-network
+
+networks:
+  stock-network:  # Definiert ein benutzerdefiniertes Netzwerk, um die Kommunikation zwischen Containern zu ermöglichen
+    driver: bridge
+
