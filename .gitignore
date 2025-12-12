@@ -1,0 +1,67 @@
+# ======================
+# Python
+# ======================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ======================
+# Testing / Coverage
+# ======================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ======================
+# SQLite / Local data
+# ======================
+*.db
+*.sqlite
+*.sqlite3
+data/*
+!data/.gitkeep
+
+# ======================
+# Environment variables
+# ======================
+.env
+.env.*
+
+# ======================
+# Logs
+# ======================
+*.log
+
+# ======================
+# OS / Editor
+# ======================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ======================
+# Docker
+# ======================
+docker/.dockerignore
+
+# ======================
+# Docs / Generated
+# ======================
+docs/screenshots/*.png
+docs/screenshots/*.jpg
+docs/screenshots/*.gif
+
+# ======================
+# Misc
+# ======================
+*.bak
+*.tmp
