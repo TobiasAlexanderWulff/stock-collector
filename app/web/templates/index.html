@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Stock Collector</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}" />
+    <script defer src="{{ url_for('static', path='app.js') }}"></script>
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>Worldwide Stock Candle Collector</h1>
+      </header>
+
+      <section class="card">
+        <h2>Collector</h2>
+        <div class="row">
+          <div>
+            <div class="label">Status</div>
+            <div class="value">
+              {% if collector.is_running %}running{% else %}stopped{% endif %}
+            </div>
+          </div>
+          <div>
+            <div class="label">Last run</div>
+            <div class="value">{{ collector.last_run or "-" }}</div>
+          </div>
+          <div>
+            <div class="label">Last error</div>
+            <div class="value mono">{{ collector.last_error or "-" }}</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="collector-start" type="button">Start</button>
+          <button id="collector-stop" type="button">Stop</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Symbols</h2>
+        <form id="symbol-form" class="form">
+          <div class="row">
+            <label>
+              <span>Symbol</span>
+              <input name="symbol" required maxlength="64" placeholder="AAPL" />
+            </label>
+            <label>
+              <span>Exchange (optional)</span>
+              <input name="exchange" maxlength="64" placeholder="NASDAQ" />
+            </label>
+            <label>
+              <span>Timezone (optional)</span>
+              <input name="timezone" maxlength="64" placeholder="America/New_York" />
+            </label>
+          </div>
+          <div class="actions">
+            <button type="submit">Add</button>
+            <div id="symbol-error" class="error" aria-live="polite"></div>
+          </div>
+        </form>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Symbol</th>
+              <th>Exchange</th>
+              <th>Timezone</th>
+              <th>Active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in symbols %}
+            <tr>
+              <td class="mono">{{ s.id }}</td>
+              <td class="mono">{{ s.symbol }}</td>
+              <td>{{ s.exchange or "-" }}</td>
+              <td class="mono">{{ s.timezone or "-" }}</td>
+              <td>{{ "yes" if s.is_active else "no" }}</td>
+              <td>
+                <button class="symbol-delete" type="button" data-id="{{ s.id }}">
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6">No symbols yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>

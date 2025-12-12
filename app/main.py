@@ -2,15 +2,22 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
 from app.db import Base, engine, get_db
 import app.models  # noqa: F401
 from app.models import Symbol
 from app.services.collector import COLLECTOR
+
+
+templates = Jinja2Templates(directory="app/web/templates")
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -21,6 +28,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
 
 class SymbolCreate(BaseModel):
@@ -109,3 +117,17 @@ async def stop_collector():
 @app.get("/api/collector/status", response_model=CollectorStatus)
 def collector_status():
     return COLLECTOR.status()
+
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard(request: Request, db: Annotated[Session, Depends(get_db)]):
+    symbols = db.query(Symbol).order_by(Symbol.id.asc()).all()
+    status_obj = COLLECTOR.status()
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "symbols": symbols,
+            "collector": status_obj,
+        },
+    )
