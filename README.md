@@ -13,8 +13,7 @@ time-series analysis (TSA) and ML/AI experiments.
 - **Global market support** (US, EU, Asia – symbol based)
 - **Multiple time resolutions**: `1d` (daily) and `1h` (intraday)
 - **Idempotent data ingestion** (no duplicate candles)
-- **Gap detection** for missing timestamps
-- **Minimal web dashboard** (status, symbols, gaps)
+- **Minimal web dashboard** (status, symbols)
 - **Dockerized setup** for reproducibility and easy deployment
 
 ---
@@ -73,6 +72,8 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
+# optional: override DB location (default: data/stocks.db)
+# export DB_PATH=data/stocks.db
 uvicorn app.main:app --reload
 ```
 
@@ -83,11 +84,20 @@ Open: [http://localhost:8000](http://localhost:8000)
 *Option B - Docker (Recommended)*
 
 ```bash
-docker compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 - App: [http://localhost:8000](http://localhost:8000)
-- Data persisted via Docker volume (`./data`)
+- Data persisted on host at `./data/stocks.db` (volume-mounted into container as `/data/stocks.db`)
+
+---
+
+## DB_PATH
+
+The SQLite database path is configured via `DB_PATH`:
+
+- Default (local): `data/stocks.db`
+- Docker: `DB_PATH=/data/stocks.db` (see `docker/docker-compose.yml`)
 
 ---
 
@@ -96,11 +106,53 @@ docker compose up --build
 1. Add symbols (e.g. `AAPL`, `^N225`, `RELIANCE.NS`)
 2. Start collector
 3. Candles are fetched periodically (`1d`, `1h`)
-4. Inspect collector status and gap report in the UI
+4. Inspect collector status in the UI
 
 ---
 
-## Example Workflow
+## Minimal API Usage (curl)
+
+Create symbol:
+
+```bash
+curl -sS -X POST http://localhost:8000/api/symbols \
+  -H 'Content-Type: application/json' \
+  -d '{"symbol":"AAPL","exchange":"NASDAQ","timezone":"America/New_York"}'
+```
+
+List symbols:
+
+```bash
+curl -sS http://localhost:8000/api/symbols
+```
+
+Delete symbol:
+
+```bash
+curl -sS -X DELETE http://localhost:8000/api/symbols/1
+```
+
+Start collector:
+
+```bash
+curl -sS -X POST http://localhost:8000/api/collector/start
+```
+
+Collector status:
+
+```bash
+curl -sS http://localhost:8000/api/collector/status
+```
+
+Stop collector:
+
+```bash
+curl -sS -X POST http://localhost:8000/api/collector/stop
+```
+
+---
+
+## Data Model (MVP)
 
 *Symbol*
 
