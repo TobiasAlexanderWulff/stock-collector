@@ -1,0 +1,16 @@
+# docker/docker-compose.yml
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: stock-collector
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_PATH=/data/stocks.db
+      # optional: set timezone for logs (DB timestamps should still be UTC in code)
+      - TZ=Europe/Berlin
+    volumes:
+      - ../data:/data
+    restart: unless-stopped
