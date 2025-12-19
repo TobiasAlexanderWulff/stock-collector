@@ -4,11 +4,20 @@ import logging
 from datetime import UTC, datetime
 
 import pandas as pd
+from curl_cffi import requests as curl_requests
 import yfinance as yf
 
 from app.services.intervals import validate_interval
 
 logger = logging.getLogger(__name__)
+_CURL_SESSION: curl_requests.Session | None = None
+
+
+def _get_curl_session() -> curl_requests.Session:
+    global _CURL_SESSION
+    if _CURL_SESSION is None:
+        _CURL_SESSION = curl_requests.Session(impersonate="chrome")
+    return _CURL_SESSION
 
 
 def _to_utc(dt: datetime | None) -> datetime | None:
@@ -78,6 +87,7 @@ def fetch_candles(
             auto_adjust=False,
             actions=False,
             threads=False,
+            session=_get_curl_session(),
         )
     except Exception:
         logger.exception(
