@@ -6,11 +6,35 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from app.db import SessionLocal
-from app.models import Symbol
+from sqlalchemy.orm import Session
+
+from app.models import CollectorStatus, Symbol
 from app.services.ingest import ingest_symbol_interval
 from app.services.intervals import ALLOWED_INTERVALS, validate_interval
 
 logger = logging.getLogger(__name__)
+_MAX_ERROR_LEN = 500
+
+
+def _get_or_create_status(db: Session, symbol_id: int) -> CollectorStatus:
+    status = (
+        db.query(CollectorStatus)
+        .filter(CollectorStatus.symbol_id == symbol_id)
+        .one_or_none()
+    )
+    if status is not None:
+        return status
+
+    status = CollectorStatus(symbol_id=symbol_id)
+    db.add(status)
+    db.flush()
+    return status
+
+
+def _truncate_error(message: str) -> str:
+    if len(message) <= _MAX_ERROR_LEN:
+        return message
+    return message[:_MAX_ERROR_LEN]
 
 
 def _interval_step(interval: str) -> timedelta:
@@ -101,15 +125,37 @@ class Collector:
                     if due_at is not None and due_at > now:
                         continue
 
+                    attempt_time = datetime.now(tz=UTC)
+                    status = _get_or_create_status(db, symbol.id)
+                    status.last_attempt_at_utc = attempt_time
+                    status.updated_at_utc = attempt_time
+                    db.commit()
+
                     try:
                         ingest_symbol_interval(db, symbol, interval, now=now)
                     except Exception as e:
+                        db.rollback()
+                        error_time = datetime.now(tz=UTC)
+                        status = _get_or_create_status(db, symbol.id)
+                        status.last_error = _truncate_error(str(e))
+                        status.consecutive_failures = (
+                            status.consecutive_failures or 0
+                        ) + 1
+                        status.updated_at_utc = error_time
+                        db.commit()
                         self.state.last_error = str(e)
                         logger.exception(
                             "collector ingest failed (symbol=%s interval=%s)",
                             symbol.symbol,
                             interval,
                         )
+                    else:
+                        success_time = datetime.now(tz=UTC)
+                        status.last_success_at_utc = success_time
+                        status.last_error = None
+                        status.consecutive_failures = 0
+                        status.updated_at_utc = success_time
+                        db.commit()
                     finally:
                         self._next_run[key] = now + _interval_step(interval)
         finally:
