@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -29,6 +29,11 @@ class Symbol(Base):
         back_populates="symbol",
         cascade="all, delete-orphan",
     )
+    collector_status: Mapped["CollectorStatus"] = relationship(
+        back_populates="symbol",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class Candle(Base):
@@ -55,3 +60,35 @@ class Candle(Base):
     volume: Mapped[float] = mapped_column(Float, nullable=False)
 
     symbol: Mapped["Symbol"] = relationship(back_populates="candles")
+
+
+class CollectorStatus(Base):
+    __tablename__ = "collector_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol_id: Mapped[int] = mapped_column(
+        ForeignKey("symbols.id"),
+        nullable=False,
+        unique=True,
+    )
+    last_attempt_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_success_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_error: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    symbol: Mapped["Symbol"] = relationship(back_populates="collector_status")
