@@ -29,12 +29,8 @@ def test_collector_status_toggles_with_mocked_ingest(monkeypatch, tmp_path):
         from app.models import Symbol
         from app.services.collector import COLLECTOR
 
-        s = SessionLocal()
-        try:
-            s.add(Symbol(symbol="AAPL", exchange=None, timezone=None, is_active=True))
-            s.commit()
-        finally:
-            s.close()
+        r = client.post("/api/symbols", json={"symbol": "AAPL"})
+        assert r.status_code == 201
 
         calls = {"count": 0}
 
@@ -47,7 +43,15 @@ def test_collector_status_toggles_with_mocked_ingest(monkeypatch, tmp_path):
 
         r = client.get("/api/collector/status")
         assert r.status_code == 200
-        assert r.json()["is_running"] is False
+        status_payload = r.json()
+        assert isinstance(status_payload, list)
+        assert len(status_payload) == 1
+        assert status_payload[0]["symbol"] == "AAPL"
+        assert status_payload[0]["last_attempt_at_utc"] is None
+        assert status_payload[0]["last_success_at_utc"] is None
+        assert status_payload[0]["last_error"] is None
+        assert status_payload[0]["consecutive_failures"] == 0
+        assert status_payload[0]["updated_at_utc"] is not None
 
         r = client.post("/api/collector/start")
         assert r.status_code == 200
@@ -55,11 +59,6 @@ def test_collector_status_toggles_with_mocked_ingest(monkeypatch, tmp_path):
 
         time.sleep(0.05)
 
-        r = client.get("/api/collector/status")
-        assert r.status_code == 200
-        status = r.json()
-        assert status["is_running"] is True
-        assert status["last_run"] is not None
         assert calls["count"] > 0
 
         r = client.post("/api/collector/stop")

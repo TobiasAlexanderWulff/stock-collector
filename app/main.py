@@ -12,7 +12,7 @@ from starlette.templating import Jinja2Templates
 
 from app.db import Base, engine, get_db
 import app.models  # noqa: F401
-from app.models import Symbol
+from app.models import CollectorStatus, Symbol
 from app.services.collector import COLLECTOR
 from app.services.intervals import InvalidIntervalError
 
@@ -79,6 +79,8 @@ def create_symbol(payload: SymbolCreate, db: Annotated[Session, Depends(get_db)]
     )
     db.add(symbol)
     try:
+        db.flush()
+        db.add(CollectorStatus(symbol_id=symbol.id))
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -105,27 +107,72 @@ def delete_symbol(symbol_id: int, db: Annotated[Session, Depends(get_db)]):
     return symbol
 
 
-class CollectorStatus(BaseModel):
+class CollectorRuntimeStatus(BaseModel):
     is_running: bool
     last_run: datetime | None
     last_error: str | None
 
 
-@app.post("/api/collector/start", response_model=CollectorStatus)
+@app.post("/api/collector/start", response_model=CollectorRuntimeStatus)
 async def start_collector():
     await COLLECTOR.start()
     return COLLECTOR.status()
 
 
-@app.post("/api/collector/stop", response_model=CollectorStatus)
+@app.post("/api/collector/stop", response_model=CollectorRuntimeStatus)
 async def stop_collector():
     await COLLECTOR.stop()
     return COLLECTOR.status()
 
+class CollectorSymbolStatus(BaseModel):
+    id: int
+    symbol: str
+    exchange: str | None
+    timezone: str | None
+    is_active: bool
+    last_attempt_at_utc: datetime | None = None
+    last_success_at_utc: datetime | None = None
+    last_error: str | None = None
+    consecutive_failures: int = 0
+    updated_at_utc: datetime | None = None
 
-@app.get("/api/collector/status", response_model=CollectorStatus)
-def collector_status():
-    return COLLECTOR.status()
+
+@app.get("/api/collector/status", response_model=list[CollectorSymbolStatus])
+def collector_status(db: Annotated[Session, Depends(get_db)]):
+    rows = (
+        db.query(Symbol, CollectorStatus)
+        .outerjoin(CollectorStatus, CollectorStatus.symbol_id == Symbol.id)
+        .order_by(Symbol.id.asc())
+        .all()
+    )
+    payload: list[CollectorSymbolStatus] = []
+    for symbol, status in rows:
+        if status is None:
+            payload.append(
+                CollectorSymbolStatus(
+                    id=symbol.id,
+                    symbol=symbol.symbol,
+                    exchange=symbol.exchange,
+                    timezone=symbol.timezone,
+                    is_active=symbol.is_active,
+                )
+            )
+            continue
+        payload.append(
+            CollectorSymbolStatus(
+                id=symbol.id,
+                symbol=symbol.symbol,
+                exchange=symbol.exchange,
+                timezone=symbol.timezone,
+                is_active=symbol.is_active,
+                last_attempt_at_utc=status.last_attempt_at_utc,
+                last_success_at_utc=status.last_success_at_utc,
+                last_error=status.last_error,
+                consecutive_failures=status.consecutive_failures,
+                updated_at_utc=status.updated_at_utc,
+            )
+        )
+    return payload
 
 
 @app.get("/", response_class=HTMLResponse)
