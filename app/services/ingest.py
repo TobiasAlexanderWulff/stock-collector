@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Candle, Symbol
-from app.services.intervals import validate_interval
+from app.services.intervals import floor_to_hour_utc, validate_interval
 from app.services.yahoo import fetch_candles
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,6 @@ def _ensure_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt.astimezone(UTC)
-
-
-def _floor_to_hour(dt: datetime) -> datetime:
-    dt = _ensure_utc(dt)
-    return dt.replace(minute=0, second=0, microsecond=0)
 
 
 def get_last_ts(db: Session, symbol_id: int, interval: str) -> datetime | None:
@@ -59,7 +54,7 @@ def ingest_symbol_interval(
     last_ts = get_last_ts(db, symbol.id, interval)
     start = _ensure_utc(last_ts) + step if last_ts is not None else None
     # Yahoo only serves completed 1h candles, so end must be the last full hour.
-    end = _floor_to_hour(now or datetime.now(tz=UTC))
+    end = floor_to_hour_utc(now or datetime.now(tz=UTC))
 
     if start is not None and start >= end:
         logger.info(
