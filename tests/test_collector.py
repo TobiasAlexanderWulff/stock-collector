@@ -25,8 +25,6 @@ def _make_client(tmp_path):
 
 def test_collector_status_toggles_with_mocked_ingest(monkeypatch, tmp_path):
     with _make_client(tmp_path) as client:
-        from app.db import SessionLocal
-        from app.models import Symbol
         from app.services.collector import COLLECTOR
 
         r = client.post("/api/symbols", json={"symbol": "AAPL"})
@@ -64,3 +62,65 @@ def test_collector_status_toggles_with_mocked_ingest(monkeypatch, tmp_path):
         r = client.post("/api/collector/stop")
         assert r.status_code == 200
         assert r.json()["is_running"] is False
+
+
+def test_collector_status_updates_on_success(monkeypatch, tmp_path):
+    with _make_client(tmp_path) as client:
+        from app.services.collector import COLLECTOR
+
+        r = client.post("/api/symbols", json={"symbol": "AAPL"})
+        assert r.status_code == 201
+
+        def fake_ingest(db, symbol, interval, now=None):
+            return 0
+
+        monkeypatch.setattr("app.services.collector.ingest_symbol_interval", fake_ingest)
+        COLLECTOR._poll_interval_seconds = 0.01
+
+        r = client.post("/api/collector/start")
+        assert r.status_code == 200
+        time.sleep(0.05)
+
+        r = client.post("/api/collector/stop")
+        assert r.status_code == 200
+
+        r = client.get("/api/collector/status")
+        assert r.status_code == 200
+        status_payload = r.json()
+        assert len(status_payload) == 1
+        status = status_payload[0]
+        assert status["last_attempt_at_utc"] is not None
+        assert status["last_success_at_utc"] is not None
+        assert status["last_error"] is None
+        assert status["consecutive_failures"] == 0
+
+
+def test_collector_status_updates_on_failure(monkeypatch, tmp_path):
+    with _make_client(tmp_path) as client:
+        from app.services.collector import COLLECTOR
+
+        r = client.post("/api/symbols", json={"symbol": "AAPL"})
+        assert r.status_code == 201
+
+        def fake_ingest(db, symbol, interval, now=None):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("app.services.collector.ingest_symbol_interval", fake_ingest)
+        COLLECTOR._poll_interval_seconds = 0.01
+
+        r = client.post("/api/collector/start")
+        assert r.status_code == 200
+        time.sleep(0.05)
+
+        r = client.post("/api/collector/stop")
+        assert r.status_code == 200
+
+        r = client.get("/api/collector/status")
+        assert r.status_code == 200
+        status_payload = r.json()
+        assert len(status_payload) == 1
+        status = status_payload[0]
+        assert status["last_attempt_at_utc"] is not None
+        assert status["last_success_at_utc"] is None
+        assert "boom" in status["last_error"]
+        assert status["consecutive_failures"] == 1
