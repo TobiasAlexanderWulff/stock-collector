@@ -11,7 +11,7 @@ time-series analysis (TSA) and ML/AI experiments.
 ## Key Features
 
 - **Global market support** (US, EU, Asia – symbol based)
-- **Multiple time resolutions**: `1d` (daily) and `1h` (intraday)
+- **Single time resolution**: `1h` (intraday)
 - **Idempotent data ingestion** (no duplicate candles)
 - **Minimal web dashboard** (status, symbols)
 - **Dockerized setup** for reproducibility and easy deployment
@@ -100,7 +100,7 @@ The SQLite database path is configured via `DB_PATH`:
 
 1. Add symbols (e.g. `AAPL`, `^N225`, `RELIANCE.NS`)
 2. Start collector
-3. Candles are fetched periodically (`1d`, `1h`)
+3. Candles are fetched periodically (`1h`)
 4. Inspect collector status in the UI
 
 ---
@@ -174,9 +174,8 @@ Unique constraint:
 
 ## Design Decisions
 
-*Why `1d` + `1h`?* 
+*Why `1h`?* 
 
-- `1d`: stable long-term history for TSA (ARIMA, GARCH, regime models)
 - `1h`: intraday structure without 1-minute data chaos or provider limits
 
 *Why SQLAlchemy + SQLite?*

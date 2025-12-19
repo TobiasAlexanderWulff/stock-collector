@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -14,6 +14,7 @@ from app.db import Base, engine, get_db
 import app.models  # noqa: F401
 from app.models import Symbol
 from app.services.collector import COLLECTOR
+from app.services.intervals import InvalidIntervalError
 
 
 templates = Jinja2Templates(directory="app/web/templates")
@@ -29,6 +30,14 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
+
+
+@app.exception_handler(InvalidIntervalError)
+def invalid_interval_handler(_: Request, exc: InvalidIntervalError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
 
 
 class SymbolCreate(BaseModel):

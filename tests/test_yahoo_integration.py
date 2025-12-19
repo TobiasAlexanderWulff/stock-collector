@@ -17,7 +17,7 @@ def test_fetch_candles_returns_ohlcv_with_utc_timestamps():
     end = datetime.now(tz=UTC)
     start = end - timedelta(days=7)
 
-    candles = fetch_candles("AAPL", "1d", start=start, end=end)
+    candles = fetch_candles("AAPL", "1h", start=start, end=end)
     assert isinstance(candles, list)
     assert len(candles) > 0
 

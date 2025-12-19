@@ -3,8 +3,8 @@
 ## Objective
 
 Build a minimal, production-style MVP that collects worldwide OHLCV candle data
-(1d and 1h) from Yahoo Finance and exposes collector status and data gaps via a
-simple web interface.
+(1h) from Yahoo Finance and exposes collector status and data gaps via a simple
+web interface.
 
 This project serves as:
 
@@ -17,7 +17,7 @@ This project serves as:
 ## Scope (Strict)
 
 - Data provider: Yahoo Finance (`yfinance`)
-- Intervals: `1d`, `1h` (60m)
+- Intervals: `1h` (60m)
 - Markets: Global (symbol-based, no auto-discovery)
 - Storage: SQLite via SQLAlchemy ORM
 - UI: Minimal server-rendered HTML
@@ -60,7 +60,7 @@ This project serves as:
 **Deliverables**
 
 - `fetch_candles()` using `yfinance`
-- Support for `1d` and `1h`
+- Support for `1h`
 - UTC timestamp normalization
 - Idempotent candle insertion
 

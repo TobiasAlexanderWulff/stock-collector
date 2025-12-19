@@ -16,7 +16,7 @@ This is an MVP. Stability, clarity, and documentation matter more than features.
 - **No React / SPA frameworks**
 - **No feature creep**
 - **Only one data provider:** Yahoo Finance via `yfinance`
-- **Only two intervals:** `1d` and `1h` (`60m`)
+- **Only one interval:** `1h` (`60m`)
 - **Database:** SQLite **only** (SQLAlchemy ORM)
 - **No Alembic migrations** in MVP
 - **All timestamps stored in UTC**
@@ -51,6 +51,7 @@ If a feature is not listed here or in `PLANS.md`, it must NOT be implemented.
 │   ├── services
 │   │   ├── collector.py
 │   │   ├── gaps.py
+│   │   ├── intervals.py
 │   │   └── yahoo.py
 │   └── web
 │       ├── static
@@ -95,7 +96,6 @@ Do NOT introduce additional layers or folders unless strictly necessary.
 - Collector must be startable/stoppable via API or UI
 - Use a background task / loop (no external schedulers)
 - Fetch:
-  - `1d`: once per day per symbol
   - `1h`: once per hour per symbol
 - Determine fetch start as:
   `last_stored_ts + interval`
@@ -144,7 +144,7 @@ The project is considered DONE when:
 
 - Symbols can be added and listed
 - Collector can be started and stopped
-- Candles for `1d` and `1h` are persisted without duplicates
+- Candles for `1h` are persisted without duplicates
 - A basic gap report is visible
 - Docker setup works out-of-the-box
 - README and architecture docs are complete

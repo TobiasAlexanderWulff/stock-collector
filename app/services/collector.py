@@ -8,16 +8,14 @@ from datetime import UTC, datetime, timedelta
 from app.db import SessionLocal
 from app.models import Symbol
 from app.services.ingest import ingest_symbol_interval
+from app.services.intervals import ALLOWED_INTERVALS, validate_interval
 
 logger = logging.getLogger(__name__)
 
 
 def _interval_step(interval: str) -> timedelta:
-    if interval == "1d":
-        return timedelta(days=1)
-    if interval == "1h":
-        return timedelta(hours=1)
-    raise ValueError("Only intervals '1d' and '1h' are supported")
+    validate_interval(interval)
+    return timedelta(hours=1)
 
 
 @dataclass
@@ -97,7 +95,7 @@ class Collector:
                     self._next_run.pop(key, None)
 
             for symbol in symbols:
-                for interval in ("1h", "1d"):
+                for interval in ALLOWED_INTERVALS:
                     key = (symbol.id, interval)
                     due_at = self._next_run.get(key)
                     if due_at is not None and due_at > now:

@@ -8,17 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Candle, Symbol
+from app.services.intervals import validate_interval
 from app.services.yahoo import fetch_candles
 
 logger = logging.getLogger(__name__)
 
 
 def _interval_step(interval: str) -> timedelta:
-    if interval == "1d":
-        return timedelta(days=1)
-    if interval == "1h":
-        return timedelta(hours=1)
-    raise ValueError("Only intervals '1d' and '1h' are supported")
+    validate_interval(interval)
+    return timedelta(hours=1)
 
 
 def _ensure_utc(dt: datetime) -> datetime:

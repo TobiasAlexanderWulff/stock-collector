@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 import pandas as pd
 import yfinance as yf
 
+from app.services.intervals import validate_interval
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +55,6 @@ def fetch_candles(
     Fetch OHLCV candles from Yahoo Finance using `yfinance`.
 
     Supported intervals:
-    - "1d" (daily)
     - "1h" (mapped to Yahoo "60m")
 
     Returns a list of dicts with:
@@ -61,10 +62,9 @@ def fetch_candles(
     - open, high, low, close, volume
     """
 
-    if interval not in ("1d", "1h"):
-        raise ValueError("Only intervals '1d' and '1h' are supported")
+    validate_interval(interval)
 
-    yf_interval = "1d" if interval == "1d" else "60m"
+    yf_interval = "60m"
     start_utc = _to_utc(start)
     end_utc = _to_utc(end)
 
