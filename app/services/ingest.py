@@ -25,6 +25,11 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
+def _floor_to_hour(dt: datetime) -> datetime:
+    dt = _ensure_utc(dt)
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+
 def get_last_ts(db: Session, symbol_id: int, interval: str) -> datetime | None:
     stmt = select(func.max(Candle.ts_utc)).where(
         Candle.symbol_id == symbol_id,
@@ -53,7 +58,18 @@ def ingest_symbol_interval(
 
     last_ts = get_last_ts(db, symbol.id, interval)
     start = _ensure_utc(last_ts) + step if last_ts is not None else None
-    end = _ensure_utc(now or datetime.now(tz=UTC))
+    # Yahoo only serves completed 1h candles, so end must be the last full hour.
+    end = _floor_to_hour(now or datetime.now(tz=UTC))
+
+    if start is not None and start >= end:
+        logger.info(
+            "skip fetch: start_utc >= end_utc (symbol=%s interval=%s start=%s end=%s)",
+            symbol.symbol,
+            interval,
+            start,
+            end,
+        )
+        return 0
 
     rows = fetch_candles(symbol.symbol, interval, start=start, end=end)
     if not rows:
